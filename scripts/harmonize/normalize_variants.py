@@ -111,6 +111,8 @@ def _extract_gtex(gtex_path: Path) -> pl.DataFrame:
                     df = pl.read_parquet(io.BytesIO(raw))
                     if "variant_id" not in df.columns:
                         continue
+                    # Extract tissue name from filename: Adipose_Subcutaneous.v11.eQTLs.SuSiE_summary.parquet
+                    tissue = fname.split("/")[-1].split(".")[0]
                     # Vectorized parsing of variant_id: chr1_285155_A_C_b38
                     vids = df["variant_id"].unique()
                     parsed = vids.str.extract_groups(r"^(chr\w+)_(\d+)_([ACGTN]+)_([ACGTN]+)(?:_b\d+)?$")
@@ -119,6 +121,7 @@ def _extract_gtex(gtex_path: Path) -> pl.DataFrame:
                         parsed_df = parsed_df.rename({"1": "chrom", "2": "pos", "3": "ref", "4": "alt"})
                         parsed_df = parsed_df.with_columns(
                             pl.col("pos").cast(pl.Int64),
+                            pl.lit(tissue).alias("context"),
                         ).filter(pl.col("chrom").is_not_null())
                         if parsed_df.height > 0:
                             chunks.append(parsed_df)
@@ -197,10 +200,14 @@ def _extract_eqtl_catalogue(eqtl_dir: Path) -> pl.DataFrame:
                         parsed_df = parsed_df.with_columns(pl.col("pos").cast(pl.Int64))
                         parsed_df = parsed_df.filter(pl.col("chrom").is_not_null())
                         if parsed_df.height > 0:
+                            study = tf.parent.parent.name  # QTS000001
+                            parsed_df = parsed_df.with_columns(pl.lit(study).alias("context"))
                             chunks.append(parsed_df)
                 continue
             df_full = read_tsv(tf, columns=[chrom_col, pos_col, ref_col, alt_col], infer_schema_length=10000, **kwargs)
             df_full = df_full.rename({chrom_col: "chrom", pos_col: "pos", ref_col: "ref", alt_col: "alt"})
+            study = tf.parent.parent.name
+            df_full = df_full.with_columns(pl.lit(study).alias("context"))
             chunks.append(df_full)
         except Exception as exc:
             print(f"    Warning: failed to read {tf.name}: {exc}", file=sys.stderr)
@@ -295,6 +302,9 @@ def _extract_gwas(gwas_dir: Path) -> pl.DataFrame:
                 continue
             df_full = read_tsv(tf, columns=[chrom_col, pos_col, ref_col, alt_col], infer_schema_length=10000, **kwargs)
             df_full = df_full.rename({chrom_col: "chrom", pos_col: "pos", ref_col: "ref", alt_col: "alt"})
+            # Extract trait name from parent directory
+            trait = tf.parent.name
+            df_full = df_full.with_columns(pl.lit(trait).alias("context"))
             chunks.append(df_full)
         except Exception:
             continue
@@ -343,6 +353,7 @@ def _extract_opentargets(ot_dir: Path) -> pl.DataFrame:
             df_full = pl.read_csv(tf, separator=sep, columns=[chrom_col, pos_col, ref_col, alt_col],
                                   infer_schema_length=10000, **kwargs)
             df_full = df_full.rename({chrom_col: "chrom", pos_col: "pos", ref_col: "ref", alt_col: "alt"})
+            df_full = df_full.with_columns(pl.lit("GWAS").alias("context"))
             chunks.append(df_full)
         except Exception:
             continue
@@ -453,7 +464,7 @@ def main() -> int:
         df = fn(path)
         if not df.is_empty():
             # Ensure consistent column order
-            cols = [c for c in ["chrom", "pos", "ref", "alt", "source"] if c in df.columns]
+            cols = [c for c in ["chrom", "pos", "ref", "alt", "context", "source"] if c in df.columns]
             df = df.select(cols)
             frames.append(df)
             source_counts[name] = df.height

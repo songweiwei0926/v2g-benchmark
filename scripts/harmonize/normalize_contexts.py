@@ -112,7 +112,7 @@ def main() -> int:
     # Extract unique contexts.
     unique_contexts = (
         variants_df.select(pl.col(ctx_col).cast(pl.Utf8))
-        .filter(pl.col(ctx_col).is_not_null() & (pl.col(ctx_col).str.strip() != ""))
+        .filter(pl.col(ctx_col).is_not_null() & (pl.col(ctx_col).str.strip_chars() != ""))
         .unique()
         .to_series()
         .to_list()
