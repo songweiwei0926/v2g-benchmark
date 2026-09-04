@@ -20,7 +20,7 @@ evidence_schema = pa.DataFrameSchema({
     "context_id": pa.Column(str, nullable=False),
     "trait_id": pa.Column(str, nullable=True),
     "evidence_type": pa.Column(str, pa.Check.isin(EVIDENCE_TYPES), nullable=False),
-    "label": pa.Column(int, pa.Check.isin([0, 1]), nullable=False),
+    "label": pa.Column(int, pa.Check.isin([-1, 0, 1]), nullable=False),
     "effect_size": pa.Column(float, nullable=True),
     "effect_direction": pa.Column(str, pa.Check.isin(["up", "down", "none", "unknown"]), nullable=True),
     "pip": pa.Column(float, checks=[pa.Check.ge(0), pa.Check.le(1)], nullable=True),

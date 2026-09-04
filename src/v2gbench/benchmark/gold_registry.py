@@ -286,7 +286,7 @@ def assign_eqtl_labels(
             .alias(col)
         )
 
-    return pl.concat([other, eqtl], how="vertical_relaxed")
+    return pl.concat([other, eqtl], how="diagonal_relaxed")
 
 
 def assign_crispr_labels(evidence_df: pl.DataFrame) -> pl.DataFrame:
@@ -358,8 +358,9 @@ def assign_crispr_labels(evidence_df: pl.DataFrame) -> pl.DataFrame:
         )
         crispr = crispr.with_columns(label_expr.alias("label"))
     else:
-        # No author-call columns -> mark unknown rather than guess.
-        crispr = crispr.with_columns(pl.lit(-1).cast(pl.Int64).alias("label"))
+        # No author-call columns -> preserve existing labels from adapter
+        # rather than overwriting with unknown.
+        pass
 
     return pl.concat([other, crispr], how="vertical_relaxed")
 

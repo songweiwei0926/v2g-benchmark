@@ -62,7 +62,7 @@ def main() -> None:
     parser.add_argument("--crispr", required=True, help="CRISPR adapter output path")
     parser.add_argument("--gwas", required=True, help="GWAS adapter output path")
     parser.add_argument("--opentargets", required=True, help="OpenTargets adapter output path")
-    parser.add_argument("--pgboost", required=True, help="pgBoost adapter output path")
+    parser.add_argument("--pgboost", default=None, help="pgBoost adapter output path (optional, model not gold standard)")
     parser.add_argument("--output", required=True, help="Output evidence_long parquet path")
     parser.add_argument("--canonical-output", required=True, help="Output canonical_pairs parquet path")
     args = parser.parse_args()
@@ -81,8 +81,9 @@ def main() -> None:
         "ENCODE_CRISPR": args.crispr,
         "GWAS_E2G": args.gwas,
         "OpenTargets_GoldStandard": args.opentargets,
-        "pgBoost_Zenodo": args.pgboost,
     }
+    if args.pgboost is not None and Path(args.pgboost).exists():
+        adapters_output["pgBoost_Zenodo"] = args.pgboost
 
     print("[build_gold_registry] Combining adapter outputs into evidence_long ...")
     evidence = build_evidence_long(adapters_output, args.output)
