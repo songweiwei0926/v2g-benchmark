@@ -295,13 +295,21 @@ def _extract_gwas(gwas_dir: Path) -> pl.DataFrame:
             df = read_tsv(tf, n_rows=5, infer_schema_length=10000, **kwargs)
             cols = set(df.columns)
             chrom_col = next((c for c in ["chr", "chrom", "chromosome", "Chr", "#Chr"] if c in cols), None)
-            pos_col = next((c for c in ["pos", "position", "Pos", "bp", "BP", "start"] if c in cols), None)
+            # Prefer 'end' (1-based) when 'start' also exists (BED format);
+            # GWAS variant.list.txt files have 0-based start/position and 1-based end.
+            if "end" in cols and "start" in cols:
+                pos_col = "end"
+            else:
+                pos_col = next((c for c in ["pos", "position", "Pos", "bp", "BP", "end", "start"] if c in cols), None)
             ref_col = next((c for c in ["ref", "Ref", "reference", "A1", "allele1"] if c in cols), None)
             alt_col = next((c for c in ["alt", "Alt", "alternate", "A2", "allele2"] if c in cols), None)
             if not all([chrom_col, pos_col, ref_col, alt_col]):
                 continue
             df_full = read_tsv(tf, columns=[chrom_col, pos_col, ref_col, alt_col], infer_schema_length=10000, **kwargs)
             df_full = df_full.rename({chrom_col: "chrom", pos_col: "pos", ref_col: "ref", alt_col: "alt"})
+            # If position came from 'start' (0-based BED), add 1 to make it 1-based
+            if pos_col == "start":
+                df_full = df_full.with_columns((pl.col("pos") + 1).alias("pos"))
             # Extract trait name from parent directory
             trait = tf.parent.name
             df_full = df_full.with_columns(pl.lit(trait).alias("context"))
