@@ -24,6 +24,7 @@ from __future__ import annotations
 
 import argparse
 import gzip
+import io
 import os
 import re
 import sys
@@ -82,8 +83,8 @@ def _coerce_variant_cols(
 def _extract_gtex(gtex_path: Path) -> pl.DataFrame:
     """Extract variants from the GTEx v11 SuSiE tar archive.
 
-    The tar contains per-tissue ``.susie.txt`` (or ``.tsv``) files.  We scan
-    each member for a ``variant_id`` column and collect unique variants.
+    The tar contains per-tissue ``.parquet`` files with a ``variant_id``
+    column.  We scan each member and collect unique variants.
     """
     if not gtex_path.exists():
         print(f"  GTEx: path not found — {gtex_path}", file=sys.stderr)
@@ -98,35 +99,47 @@ def _extract_gtex(gtex_path: Path) -> pl.DataFrame:
             if not member.isfile():
                 continue
             fname = member.name
-            if not (fname.endswith(".txt") or fname.endswith(".tsv")
-                    or fname.endswith(".txt.gz") or fname.endswith(".tsv.gz")):
+            if not (fname.endswith(".parquet") or fname.endswith(".txt")
+                    or fname.endswith(".tsv") or fname.endswith(".txt.gz")
+                    or fname.endswith(".tsv.gz")):
                 continue
             try:
                 fobj = tar.extractfile(member)
                 if fobj is None:
                     continue
                 raw = fobj.read()
-                if fname.endswith(".gz"):
-                    raw = gzip.decompress(raw)
-                text = raw.decode("utf-8", errors="replace")
-                lines = text.strip().splitlines()
-                if not lines:
-                    continue
-                header = lines[0].split("\t")
-                if "variant_id" not in header:
-                    continue
-                vid_idx = header.index("variant_id")
-                for line in lines[1:]:
-                    fields = line.split("\t")
-                    if len(fields) <= vid_idx:
+                if fname.endswith(".parquet"):
+                    df = pl.read_parquet(io.BytesIO(raw))
+                    if "variant_id" not in df.columns:
                         continue
-                    vid = fields[vid_idx]
-                    if vid in seen:
+                    for vid in df["variant_id"].to_list():
+                        if vid not in seen:
+                            parsed = _parse_gtex_variant_id(vid)
+                            if parsed:
+                                seen.add(vid)
+                                variants.append(parsed)
+                else:
+                    if fname.endswith(".gz"):
+                        raw = gzip.decompress(raw)
+                    text = raw.decode("utf-8", errors="replace")
+                    lines = text.strip().splitlines()
+                    if not lines:
                         continue
-                    parsed = _parse_gtex_variant_id(vid)
-                    if parsed:
-                        seen.add(vid)
-                        variants.append(parsed)
+                    header = lines[0].split("\t")
+                    if "variant_id" not in header:
+                        continue
+                    vid_idx = header.index("variant_id")
+                    for line in lines[1:]:
+                        fields = line.split("\t")
+                        if len(fields) <= vid_idx:
+                            continue
+                        vid = fields[vid_idx]
+                        if vid in seen:
+                            continue
+                        parsed = _parse_gtex_variant_id(vid)
+                        if parsed:
+                            seen.add(vid)
+                            variants.append(parsed)
             except Exception as exc:
                 print(f"    Warning: failed to read {fname}: {exc}", file=sys.stderr)
 
@@ -156,8 +169,6 @@ def _extract_eqtl_catalogue(eqtl_dir: Path) -> pl.DataFrame:
     for tf in tsv_files:
         try:
             kwargs = {}
-            if tf.name.endswith(".gz"):
-                kwargs["compression"] = "gzip"
             df = read_tsv(tf, n_rows=5, **kwargs)
             cols = set(df.columns)
             # Determine column names.
@@ -197,12 +208,10 @@ def _extract_crispr(crispr_dir: Path) -> pl.DataFrame:
         return pl.DataFrame()
 
     # Find the key file.
-    key_file = crispr_dir / "resources" / "crispr_data" / "EPCrisprBenchmark_ensemble_data_GRCh38.tsv.gz"
+    key_file = crispr_dir / "resources" / "crispr_data" / "EPCrisprBenchmark_combined_data.heldout_5_cell_types.GRCh38.tsv.gz"
     if not key_file.exists():
-        # Search for it.
-        candidates = list(crispr_dir.rglob("EPCrisprBenchmark_ensemble_data_GRCh38.tsv.gz"))
-        if not candidates:
-            candidates = list(crispr_dir.rglob("*ensemble*.tsv*"))
+        # Search for any EPCrisprBenchmark TSV.
+        candidates = list(crispr_dir.rglob("EPCrisprBenchmark_*.tsv.gz"))
         if not candidates:
             print(f"  CRISPR: key TSV not found under {crispr_dir}", file=sys.stderr)
             return pl.DataFrame()
@@ -210,7 +219,7 @@ def _extract_crispr(crispr_dir: Path) -> pl.DataFrame:
 
     print(f"  CRISPR: reading {key_file.name} ...")
     try:
-        kwargs = {"compression": "gzip"} if key_file.name.endswith(".gz") else {}
+        kwargs = {}
         df = read_tsv(key_file, **kwargs)
     except Exception as exc:
         print(f"  CRISPR: failed to read {key_file}: {exc}", file=sys.stderr)
@@ -265,14 +274,12 @@ def _extract_gwas(gwas_dir: Path) -> pl.DataFrame:
     for tf in tsv_files:
         try:
             kwargs = {}
-            if tf.name.endswith(".gz"):
-                kwargs["compression"] = "gzip"
             df = read_tsv(tf, n_rows=5, **kwargs)
             cols = set(df.columns)
             chrom_col = next((c for c in ["chr", "chrom", "chromosome", "Chr", "#Chr"] if c in cols), None)
-            pos_col = next((c for c in ["pos", "position", "Pos", "bp", "BP"] if c in cols), None)
-            ref_col = next((c for c in ["ref", "Ref", "reference", "A1"] if c in cols), None)
-            alt_col = next((c for c in ["alt", "Alt", "alternate", "A2"] if c in cols), None)
+            pos_col = next((c for c in ["pos", "position", "Pos", "bp", "BP", "start"] if c in cols), None)
+            ref_col = next((c for c in ["ref", "Ref", "reference", "A1", "allele1"] if c in cols), None)
+            alt_col = next((c for c in ["alt", "Alt", "alternate", "A2", "allele2"] if c in cols), None)
             if not all([chrom_col, pos_col, ref_col, alt_col]):
                 continue
             df_full = read_tsv(tf, columns=[chrom_col, pos_col, ref_col, alt_col], **kwargs)
@@ -317,8 +324,6 @@ def _extract_opentargets(ot_dir: Path) -> pl.DataFrame:
     for tf in data_files:
         try:
             kwargs = {}
-            if tf.name.endswith(".gz"):
-                kwargs["compression"] = "gzip"
             sep = "\t"
             if tf.name.endswith(".csv") or tf.name.endswith(".csv.gz"):
                 sep = ","
@@ -371,8 +376,6 @@ def _extract_pgboost(pgboost_dir: Path) -> pl.DataFrame:
     for tf in data_files:
         try:
             kwargs = {}
-            if tf.name.endswith(".gz"):
-                kwargs["compression"] = "gzip"
             df = read_tsv(tf, n_rows=5, **kwargs)
             cols = set(df.columns)
             chrom_col = next((c for c in ["chr", "chrom", "chromosome", "Chr"] if c in cols), None)
