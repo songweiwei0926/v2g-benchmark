@@ -722,7 +722,7 @@ def main() -> int:
             .rename({"CellType": "context", "len": "count"})
             .with_columns(pl.lit("CRISPR").alias("source"))
         )
-        ctx_counts = pl.concat([ctx_counts, crispr_ctx], how="vertical")
+        ctx_counts = pl.concat([ctx_counts, crispr_ctx.select(ctx_counts.columns)], how="vertical")
         print(f"  Added {crispr_ctx.height} CRISPR cell types")
 
     # Build inventory with resolution
@@ -832,7 +832,7 @@ def main() -> int:
         "total_contexts": crispr_total,
         "mapped": crispr_mapped,
         "unmapped": crispr_total - crispr_mapped,
-        "mapping_rate": f"{100 * crispr_mapped / crispar_total:.1f}%" if crispr_total > 0 else "N/A",
+        "mapping_rate": f"{100 * crispr_mapped / crispr_total:.1f}%" if crispr_total > 0 else "N/A",
         "required_threshold": "100%",
         "status": "PASS" if crispr_mapped == crispr_total else "FAIL",
     })
