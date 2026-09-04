@@ -1,0 +1,172 @@
+# Resource requirements per Snakemake rule
+# Used for SLURM submission (portability) and local execution planning
+
+rules:
+  preflight:
+    cores: 1
+    memory_gb: 2
+    time_min: 5
+
+  download_references:
+    cores: 2
+    memory_gb: 4
+    time_min: 30
+
+  download_gtex:
+    cores: 2
+    memory_gb: 4
+    time_min: 30
+
+  download_eqtl_catalogue:
+    cores: 2
+    memory_gb: 4
+    time_min: 60
+
+  download_crispr:
+    cores: 2
+    memory_gb: 4
+    time_min: 15
+
+  download_gwas:
+    cores: 2
+    memory_gb: 4
+    time_min: 15
+
+  download_opentargets:
+    cores: 2
+    memory_gb: 4
+    time_min: 15
+
+  download_zenodo:
+    cores: 2
+    memory_gb: 4
+    time_min: 30
+
+  download_synapse:
+    cores: 2
+    memory_gb: 4
+    time_min: 120
+
+  download_traitgym:
+    cores: 2
+    memory_gb: 4
+    time_min: 15
+
+  normalize_variants:
+    cores: 4
+    memory_gb: 8
+    time_min: 30
+
+  normalize_genes:
+    cores: 2
+    memory_gb: 8
+    time_min: 15
+
+  normalize_contexts:
+    cores: 2
+    memory_gb: 4
+    time_min: 15
+
+  build_gold_registry:
+    cores: 4
+    memory_gb: 16
+    time_min: 30
+
+  build_candidate_sets:
+    cores: 4
+    memory_gb: 16
+    time_min: 30
+
+  build_leakage_registry:
+    cores: 2
+    memory_gb: 4
+    time_min: 15
+
+  build_applicability_matrix:
+    cores: 2
+    memory_gb: 4
+    time_min: 15
+
+  build_seq_core:
+    cores: 2
+    memory_gb: 4
+    time_min: 15
+
+  score_baselines:
+    cores: 4
+    memory_gb: 8
+    time_min: 30
+
+  import_published:
+    cores: 4
+    memory_gb: 16
+    time_min: 60
+
+  score_borzoi:
+    cores: 2
+    memory_gb: 16
+    time_min: 240
+    gpu: true
+    gpu_memory_gb: 16
+
+  score_enformer:
+    cores: 2
+    memory_gb: 16
+    time_min: 120
+    gpu: true
+    gpu_memory_gb: 16
+
+  score_alphagenome:
+    cores: 2
+    memory_gb: 4
+    time_min: 240
+
+  merge_predictions:
+    cores: 4
+    memory_gb: 32
+    time_min: 30
+
+  evaluate_ranking:
+    cores: 4
+    memory_gb: 16
+    time_min: 30
+
+  evaluate_classification:
+    cores: 4
+    memory_gb: 16
+    time_min: 30
+
+  run_bootstrap:
+    cores: 8
+    memory_gb: 32
+    time_min: 180
+
+  run_stratified:
+    cores: 4
+    memory_gb: 16
+    time_min: 60
+
+  run_failure_analysis:
+    cores: 2
+    memory_gb: 8
+    time_min: 30
+
+  train_integrated:
+    cores: 4
+    memory_gb: 16
+    time_min: 60
+
+  make_figures:
+    cores: 2
+    memory_gb: 8
+    time_min: 30
+
+  make_tables:
+    cores: 2
+    memory_gb: 8
+    time_min: 15
+
+  final_qc:
+    cores: 1
+    memory_gb: 4
+    time_min: 15

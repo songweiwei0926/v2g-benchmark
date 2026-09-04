@@ -1,0 +1,20 @@
+name: v2gbench-core
+channels:
+  - conda-forge
+  - bioconda
+dependencies:
+  - python=3.11
+  - polars
+  - pyarrow
+  - duckdb
+  - pandera
+  - pyyaml
+  - requests
+  - tqdm
+  - scikit-learn
+  - scipy
+  - numpy
+  - matplotlib
+  - seaborn
+  - openpyxl
+  - pip

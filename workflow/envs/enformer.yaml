@@ -1,0 +1,13 @@
+name: v2gbench-enformer
+channels:
+  - conda-forge
+dependencies:
+  - python=3.11
+  - pip
+  - pip:
+    - enformer-pytorch
+    - torch>=2.0
+    - polars
+    - pyarrow
+    - pyyaml
+    - numpy

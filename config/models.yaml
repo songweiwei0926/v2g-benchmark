@@ -1,0 +1,272 @@
+# Model registry — all models in the benchmark
+# enabled: true = mandatory (preflight must verify resources)
+# enabled: supplementary = auto-discovered, run if schema valid
+
+models:
+
+  # === Family 0: Negative control / simple baselines ===
+
+  random:
+    family: baseline
+    mode: derived_baseline
+    enabled: true
+
+  nearest_tss:
+    family: baseline
+    mode: derived_baseline
+    enabled: true
+
+  inverse_distance:
+    family: baseline
+    mode: derived_baseline
+    enabled: true
+
+  exp_distance_50kb:
+    family: baseline
+    mode: derived_baseline
+    enabled: true
+    lambda: 50000
+
+  exp_distance_100kb:
+    family: baseline
+    mode: derived_baseline
+    enabled: true
+    lambda: 100000
+
+  exp_distance_250kb:
+    family: baseline
+    mode: derived_baseline
+    enabled: true
+    lambda: 250000
+
+  nearest_expressed:
+    family: baseline
+    mode: derived_baseline
+    enabled: true
+
+  # === Family 1: Classical E2G ===
+
+  abc:
+    family: e2g
+    mode: published_prediction
+    enabled: true
+
+  encode_re2g:
+    family: e2g
+    mode: published_prediction
+    enabled: true
+    paper_version: "1.0.0"
+
+  sce2g_atac:
+    family: e2g
+    mode: published_prediction
+    enabled: true
+
+  sce2g_multiome:
+    family: e2g
+    mode: published_prediction
+    enabled: true
+
+  epimap:
+    family: e2g
+    mode: published_prediction
+    enabled: true
+
+  graphreg:
+    family: e2g
+    mode: published_prediction
+    enabled: true
+
+  # === Family 2: Single-cell E2G ===
+
+  pgboost:
+    family: singlecell
+    mode: published_prediction
+    enabled: true
+
+  scent:
+    family: singlecell
+    mode: published_prediction
+    enabled: true
+
+  signac:
+    family: singlecell
+    mode: published_prediction
+    enabled: true
+
+  archr:
+    family: singlecell
+    mode: published_prediction
+    enabled: true
+
+  cicero:
+    family: singlecell
+    mode: published_prediction
+    enabled: true
+
+  # === Family 3: Sequence models ===
+
+  borzoi:
+    family: sequence
+    mode: local_inference
+    enabled: true
+    ensemble_replicates: 4
+    replicates:
+      - replicate_0
+      - replicate_1
+      - replicate_2
+      - replicate_3
+    weights_url: "https://storage.googleapis.com/borzoi-public_weights"
+    output_tracks: RNA
+
+  enformer:
+    family: sequence
+    mode: local_inference
+    enabled: true
+    weights_url: "https://tfhub.dev/deepmind/enformer/1"
+    output_tracks: CAGE
+    context_window: 196608  # 114,688bp input → 1280bp resolution
+
+  alphagenome:
+    family: sequence
+    mode: remote_inference
+    enabled: true
+    scorer: RNA_SEQ
+    gene_scorer: GeneMaskLFC
+    sequence_length: 262144  # 262kb
+    save_fields:
+      - alphagenome_signed
+      - alphagenome_abs
+      - alphagenome_quantile
+
+  # === Family 4: Disease-specific gene prioritization ===
+
+  opentargets_l2g_2021:
+    family: disease
+    mode: published_prediction
+    enabled: true
+    track: C
+    version: "2021"
+
+  opentargets_l2g_current:
+    family: disease
+    mode: published_prediction
+    enabled: true
+    track: C
+    version: current
+
+  # === Family 5: Auto-discovered (enabled at runtime) ===
+  # discover_encode_models.py sets enabled=supplementary
+
+  # === Integrated models (Track E) ===
+
+  integrated_rank:
+    family: ensemble
+    mode: derived_ensemble
+    enabled: true
+
+  integrated_logistic:
+    family: ensemble
+    mode: derived_ensemble
+    enabled: true
+
+  integrated_xgboost:
+    family: ensemble
+    mode: derived_ensemble
+    enabled: true
+
+# === Main figure model order ===
+main_figure_models:
+  - random
+  - nearest_tss
+  - exp_distance_100kb
+  - abc
+  - encode_re2g
+  - sce2g
+  - epimap
+  - graphreg
+  - pgboost
+  - scent
+  - signac
+  - archr
+  - cicero
+  - enformer
+  - borzoi
+  - alphagenome
+  - integrated_rank
+  - integrated_logistic
+  - integrated_xgboost
+
+# === Excluded models (written to model_exclusions.tsv) ===
+excluded_models:
+  - model: CADD
+    reason: variant_pathogenicity_only
+    reference: "Kircher et al 2014"
+    code_available: true
+    weights_available: true
+    gene_specific: false
+    included: false
+
+  - model: phyloP
+    reason: conservation_score_only
+    reference: "Pollard et al 2010"
+    code_available: true
+    weights_available: true
+    gene_specific: false
+    included: false
+
+  - model: phastCons
+    reason: conservation_score_only
+    reference: "Siepel et al 2005"
+    code_available: true
+    weights_available: true
+    gene_specific: false
+    included: false
+
+  - model: GPN
+    reason: no_gene_specific_score
+    reference: "Benegas et al 2023"
+    code_available: true
+    weights_available: true
+    gene_specific: false
+    included: false
+
+  - model: Sei
+    reason: variant_effect_only
+    reference: "Chen et al 2022"
+    code_available: true
+    weights_available: true
+    gene_specific: false
+    included: false
+
+  - model: DeepSEA
+    reason: variant_effect_only
+    reference: "Zhou & Troyanskaya 2015"
+    code_available: true
+    weights_available: true
+    gene_specific: false
+    included: false
+
+  - model: SVEN
+    reason: variant_effect_only
+    reference: "Sarkar et al 2024"
+    code_available: true
+    weights_available: true
+    gene_specific: false
+    included: false
+
+  - model: PromoterAI
+    reason: promoter_variant_only
+    reference: "de Almeida et al 2022"
+    code_available: true
+    weights_available: true
+    gene_specific: false
+    included: false
+
+  - model: GET
+    reason: no_direct_zero_shot_nucleotide_V2G_score
+    reference: "Gao et al 2024"
+    code_available: true
+    weights_available: true
+    gene_specific: false
+    included: false

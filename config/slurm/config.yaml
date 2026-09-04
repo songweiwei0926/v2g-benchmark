@@ -1,0 +1,36 @@
+# SLURM configuration (for portability — not used in local execution mode)
+# When running on a SLURM cluster, use: snakemake --profile config/slurm
+
+executor: slurm
+jobs: 100
+restart-times: 3
+default-resources:
+  - mem_mb=8000
+  - time_min=60
+  - disk_mb=10000
+
+# Rule-specific resources (loaded from resources.yaml)
+cluster: "sbatch --cpus-per-task={resources.cpus} --mem={resources.mem_mb} --time={resources.time_min} --partition={resources.partition} --job-name={rule}-{wildcards} --output=logs/{rule}/{wildcards}.out --error=logs/{rule}/{wildcards}.err"
+
+# GPU partition
+cluster-generic-submit: "sbatch"
+
+# Partitions
+partitions:
+  cpu_small:
+    cpus: 4
+    mem_mb: 16000
+    time_min: 60
+  cpu_large:
+    cpus: 16
+    mem_mb: 64000
+    time_min: 120
+  gpu:
+    cpus: 8
+    mem_mb: 64000
+    time_min: 240
+    gres: "gpu:1"
+  big_merge:
+    cpus: 16
+    mem_mb: 128000
+    time_min: 60

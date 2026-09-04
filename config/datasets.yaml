@@ -1,0 +1,127 @@
+# Dataset registry — all gold-standard and auxiliary datasets
+# URLs, versions, and expected checksums are frozen at discovery time.
+
+datasets:
+  # === Track A: Direct Variant-to-Gene ===
+
+  GTEx_V11:
+    track: A
+    type: eqtl_fine_mapping
+    source: GTEx Portal
+    url: "https://storage.googleapis.com/adult-gtex/bulk-qtl/v8/single-tissue-cis-qtl/GTEx_Analysis_v11_eQTL_SuSiE.tar"
+    size_gb: 0.174
+    gencode: v47
+    format: tar
+    adapter: GTExAdapter
+
+  eQTLCatalogue_STABLE:
+    track: A
+    type: eqtl_fine_mapping
+    source: EBI eQTL Catalogue
+    url: "https://www.ebi.ac.uk/eqtl/api/"
+    format: api
+    adapter: EQTLCatalogueAdapter
+    release: stable
+
+  eQTLCatalogue_R8_BETA:
+    track: A
+    type: eqtl_fine_mapping
+    source: EBI eQTL Catalogue
+    url: "https://www.ebi.ac.uk/eqtl/api/"
+    format: api
+    adapter: EQTLCatalogueAdapter
+    release: r8_beta
+
+  # === Track B: Experimental Enhancer-to-Gene ===
+
+  ENCODE_CRISPR:
+    track: B
+    type: crispr
+    source: GitHub
+    repo: "EngreitzLab/CRISPR_comparison"
+    url: "https://github.com/EngreitzLab/CRISPR_comparison"
+    key_file: "resources/crispr_data/EPCrisprBenchmark_ensemble_data_GRCh38.tsv.gz"
+    adapter: CRISPRAdapter
+
+  ENCODE_HeldOut:
+    track: B
+    type: crispr_heldout
+    source: GitHub
+    repo: "EngreitzLab/ENCODE_Test_Dataset_Analysis"
+    url: "https://github.com/EngreitzLab/ENCODE_Test_Dataset_Analysis"
+    adapter: ENCODEHeldOutAdapter
+
+  # === Track C: Disease Locus-to-Gene ===
+
+  GWAS_E2G:
+    track: C
+    type: gwas
+    source: GitHub
+    repo: "EngreitzLab/GWAS_E2G_benchmarking"
+    url: "https://github.com/EngreitzLab/GWAS_E2G_benchmarking"
+    adapter: GWASAdapter
+
+  OpenTargets_GoldStandard:
+    track: C
+    type: curated_l2g
+    source: GitHub
+    repo: "opentargets-archive/genetics-gold-standards"
+    url: "https://github.com/opentargets-archive/genetics-gold-standards"
+    key_path: "gold_standards/processed/"
+    adapter: OpenTargetsAdapter
+    main_confidence: ["high", "medium"]
+    sensitivity_confidence: ["high"]
+
+  # === Benchmark bundle ===
+
+  pgBoost_Zenodo:
+    track: A
+    type: benchmark_bundle
+    source: Zenodo
+    zenodo_id: 11211925
+    url: "https://zenodo.org/api/records/11211925"
+    files:
+      - pgboost_scores.tsv.gz
+      - constituent_method_scores.tsv.gz
+      - gwas_evaluation.tsv
+    adapter: pgBoostAdapter
+    stats:
+      eqtl_links: 4434
+      abc_links: 53701
+      crispr_links: 892
+      gwas_links: 155
+
+  # === Track D: Variant Effect ===
+
+  TraitGym:
+    track: D
+    type: variant_effect
+    source: GitHub
+    repo: "songlab-cal/TraitGym"
+    url: "https://github.com/songlab-cal/TraitGym"
+    adapter: TraitGymAdapter
+
+  # === Published predictions ===
+
+  ENCODE_Predictions_Bundle:
+    track: supplementary
+    type: published_predictions
+    source: Synapse
+    synapse_project: "ENCODE-rE2G"
+    size_gb: 76
+    adapter: ENCODEBundleAdapter
+    note: "Prediction bundle from ENCODE-rE2G paper, ~76GB, auto-discover all models"
+
+  # === Reference ===
+
+  GRCh38_FASTA:
+    type: reference
+    source: NCBI
+    url: "https://ftp.ncbi.nlm.nih.gov/genomes/all/GCA/000/001/405/GCA_000001405.15_GRCh38/seqs_for_alignment_pipelines.ucsc_ids/GCA_000001405.15_GRCh38_no_alt_analysis_set.fna.gz"
+    adapter: ReferenceAdapter
+
+  GENCODE_V47:
+    type: reference
+    source: GENCODE
+    url: "https://ftp.ebi.ac.uk/pub/databases/gencode/Gencode_human/release_47/gencode.v47.annotation.gtf.gz"
+    adapter: ReferenceAdapter

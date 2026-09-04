@@ -1,0 +1,46 @@
+# Credentials
+.env
+*.key
+*.pem
+
+# Data (too large for git)
+data/raw/
+data/interim/
+data/processed/
+data/locked/
+data/reference/
+
+# Predictions (generated)
+predictions/
+
+# Results (generated)
+results/
+
+# Logs
+logs/
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.egg-info/
+dist/
+build/
+.eggs/
+
+# Snakemake
+.snakemake/
+*.snakemake_timestamp
+
+# Conda
+.conda/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*~

@@ -1,0 +1,96 @@
+# Plotting configuration
+
+figures:
+  fig1:
+    title: "A unified benchmark of regulatory variant-to-gene prediction"
+    panels:
+      A: schematic
+      B: data_summary_bar
+      C: upset_overlap
+      D: gold_distance_distribution
+      E: nearest_nonnearest_proportion
+    output: "results/figures/fig1_overview.svg"
+
+  fig2:
+    title: "Existing models show highly heterogeneous performance across regulatory linking tasks"
+    type: heatmap
+    axes: [model, benchmark]
+    metrics: [MRR, Top1, AUPRC, coverage]
+    output: "results/figures/fig2_heatmap.svg"
+
+  fig3:
+    title: "Distal and non-nearest regulatory interactions remain challenging"
+    panels:
+      A: mrr_vs_distance
+      B: nearest_vs_nonnearest
+      C: gold_distance_rank
+      D: candidate_gene_number
+    output: "results/figures/fig3_distance.svg"
+
+  fig4:
+    title: "Cell-type matching improves regulatory target prediction"
+    comparison: [exact, closely_matched, coarse_matched, unmatched]
+    output: "results/figures/fig4_context.svg"
+
+  fig5:
+    title: "Sequence and enhancer-gene models capture complementary information"
+    type: scatter_quadrant
+    x: sequence_score
+    y: e2g_score
+    output: "results/figures/fig5_complementarity.svg"
+
+  fig6:
+    title: "Integrating sequence variant effects and enhancer-gene evidence improves V2G prioritization"
+    comparison: [best_standalone, rank_average, logistic, xgboost]
+    output: "results/figures/fig6_integrated.svg"
+
+# Supplementary figures
+supplementary_figures:
+  S1: pip_sensitivity
+  S2: window_sensitivity
+  S3: context_sensitivity
+  S4: model_disagreement_clustering
+  S5: variant_effect_vs_v2g
+  S6: failure_mode_examples
+  S7: all_encode_configurations
+
+# Tables
+tables:
+  main:
+    file: "results/tables/main_results.tsv"
+    columns: [Model, Family, MRR, Top1, Top3, Top5, AUPRC, Coverage, CI_low, CI_high]
+
+  supplementary:
+    S1: dataset_registry
+    S2: gold_standard_summary
+    S3: context_mapping
+    S4: dataset_overlaps
+    S5: model_registry
+    S6: model_versions
+    S7: model_applicability
+    S8: training_leakage
+    S9: all_model_configurations
+    S10: overall_metrics
+    S11: stratified_metrics
+    S12: pairwise_bootstrap
+    S13: failure_mode_loci
+    S14: sequence_model_scores
+    S15: integrated_feature_importance
+    S16: qc_report
+    S17: excluded_models
+    output: "results/tables/SupplementaryTables.xlsx"
+
+# Plot style
+style:
+  format: svg
+  font_family: "Liberation Sans"
+  colorblind_friendly: true
+  dpi: 300
+  figure_size: [7.2, 4.8]  # inches
+  palette:
+    baseline: "#999999"
+    e2g: "#0279EE"
+    singlecell: "#75A025"
+    sequence: "#FF9400"
+    disease: "#FD9BED"
+    ensemble: "#E9ED4C"

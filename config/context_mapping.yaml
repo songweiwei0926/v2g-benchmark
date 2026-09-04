@@ -1,0 +1,126 @@
+# Context mapping configuration
+
+# Ontology sources
+ontologies:
+  CL:
+    name: "Cell Type Ontology"
+    prefix: "CL:"
+  UBERON:
+    name: "Uber Anatomy Ontology"
+    prefix: "UBERON:"
+  EFO:
+    name: "Experimental Factor Ontology"
+    prefix: "EFO:"
+
+# Mapping levels (applied in order)
+mapping_levels:
+  1:
+    name: exact_ontology_id
+    description: "Direct ontology ID match"
+    confidence: 1.0
+  2:
+    name: normalized_exact_string
+    description: "Normalized string match after lowercasing, stripping whitespace"
+    confidence: 0.95
+  3:
+    name: synonym
+    description: "Synonym match from ontology"
+    confidence: 0.90
+  4:
+    name: ontology_parent_child_1
+    description: "Ontology parent/child distance ≤ 1"
+    confidence: 0.85
+  5:
+    name: ontology_distance_2
+    description: "Ontology distance ≤ 2"
+    confidence: 0.75
+  6:
+    name: published_sce2g_mapping
+    description: "Published scE2G fine/coarse tissue mapping"
+    confidence: 0.70
+
+# Primary benchmark threshold
+primary_min_confidence: 0.8
+
+# Known context aliases (seed for mapping)
+context_aliases:
+  K562:
+    ontology_id: "CL:C00002"
+    aliases: ["K562", "K-562", "K562 cells"]
+    supergroup: "hematopoietic"
+  Whole_Blood:
+    ontology_id: "UBERON:0000178"
+    aliases: ["Whole Blood", "whole blood", "Blood", "blood"]
+    supergroup: "blood"
+  Liver:
+    ontology_id: "UBERON:0002107"
+    aliases: ["Liver", "liver", "liver tissue"]
+    supergroup: "liver"
+  Brain:
+    ontology_id: "UBERON:0000955"
+    aliases: ["Brain", "brain", "brain tissue"]
+    supergroup: "brain"
+  PBMC:
+    ontology_id: "CL:2000001"
+    aliases: ["PBMC", "pbmc", "Peripheral Blood Mononuclear Cells"]
+    supergroup: "hematopoietic"
+  CD4_T_cell:
+    ontology_id: "CL:0000084"
+    aliases: ["CD4 T cell", "CD4+ T cell", "T cell", "T-cell"]
+    supergroup: "hematopoietic"
+  CD8_T_cell:
+    ontology_id: "CL:0000084"
+    aliases: ["CD8 T cell", "CD8+ T cell", "cytotoxic T cell"]
+    supergroup: "hematopoietic"
+  B_cell:
+    ontology_id: "CL:0000236"
+    aliases: ["B cell", "B-cell", "B lymphocyte"]
+    supergroup: "hematopoietic"
+  Monocyte:
+    ontology_id: "CL:0000576"
+    aliases: ["Monocyte", "monocyte", "CD14+ monocyte"]
+    supergroup: "hematopoietic"
+  NK_cell:
+    ontology_id: "CL:0000623"
+    aliases: ["NK cell", "NK-cell", "natural killer cell"]
+    supergroup: "hematopoietic"
+  Fibroblast:
+    ontology_id: "CL:0000057"
+    aliases: ["Fibroblast", "fibroblast", "skin fibroblast"]
+    supergroup: "connective"
+  HEK293:
+    ontology_id: "CL:C00003"
+    aliases: ["HEK293", "HEK293T", "HEK 293"]
+    supergroup: "kidney"
+  GM12878:
+    ontology_id: "CL:C00001"
+    aliases: ["GM12878", "GM12878 cells", "EBV-transformed lymphocyte"]
+    supergroup: "hematopoietic"
+  H1ESC:
+    ontology_id: "CL:0002322"
+    aliases: ["H1 ESC", "H1 hESC", "H1 embryonic stem cell", "hESC"]
+    supergroup: "pluripotent"
+  A549:
+    ontology_id: "CL:C00004"
+    aliases: ["A549", "A549 cells", "lung adenocarcinoma"]
+    supergroup: "lung"
+  Heart:
+    ontology_id: "UBERON:0000948"
+    aliases: ["Heart", "heart", "heart tissue", "cardiac"]
+    supergroup: "heart"
+  Kidney:
+    ontology_id: "UBERON:0002113"
+    aliases: ["Kidney", "kidney", "kidney tissue"]
+    supergroup: "kidney"
+  Skin:
+    ontology_id: "UBERON:0002097"
+    aliases: ["Skin", "skin", "skin tissue"]
+    supergroup: "skin"
+  Muscle:
+    ontology_id: "UBERON:0001134"
+    aliases: ["Muscle", "muscle", "muscle tissue", "skeletal muscle"]
+    supergroup: "muscle"
+  Adipose:
+    ontology_id: "UBERON:0001013"
+    aliases: ["Adipose", "adipose", "adipose tissue", "fat"]
+    supergroup: "adipose"

@@ -1,0 +1,12 @@
+name: v2gbench-r
+channels:
+  - conda-forge
+dependencies:
+  - r-base=4.3
+  - r-ggplot2
+  - r-complexheatmap
+  - r-ggprism
+  - r-dplyr
+  - r-readr
+  - r-tidyr
+  - r-svglite

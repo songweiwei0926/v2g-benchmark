@@ -1,0 +1,13 @@
+name: v2gbench-alphagenome
+channels:
+  - conda-forge
+dependencies:
+  - python=3.11
+  - pip
+  - pip:
+    - alphagenome>=0.8
+    - polars
+    - pyarrow
+    - pyyaml
+    - requests
+    - tqdm

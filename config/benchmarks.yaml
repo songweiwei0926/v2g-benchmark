@@ -1,0 +1,103 @@
+# Benchmark track definitions
+
+tracks:
+  A:
+    name: "Direct Variant-to-Gene"
+    description: "Variant → target gene prediction using fine-mapped eQTL and GWAS"
+    gold_sources:
+      - GTEx_V11
+      - eQTLCatalogue_STABLE
+      - eQTLCatalogue_R8_BETA
+      - pgBoost_Zenodo
+    unit: variant
+    metrics:
+      - MRR
+      - Top1
+      - Recall@3
+      - Recall@5
+      - NDCG
+      - AUPRC
+    models:
+      - all_baseline
+      - all_e2g
+      - all_singlecell
+      - all_sequence
+      - all_ensemble
+
+  B:
+    name: "Experimental Enhancer-to-Gene"
+    description: "Enhancer → target gene prediction using CRISPRi/a, Perturb-seq, FlowFISH"
+    gold_sources:
+      - ENCODE_CRISPR
+      - ENCODE_HeldOut
+    unit: enhancer
+    metrics:
+      - AUPRC
+      - AUROC
+      - MRR
+    models:
+      - all_baseline
+      - all_e2g
+      - all_singlecell
+
+  C:
+    name: "Disease Variant/Locus-to-Gene"
+    description: "Disease-associated locus → most likely affected gene"
+    gold_sources:
+      - GWAS_E2G
+      - OpenTargets_GoldStandard
+    unit: locus
+    metrics:
+      - MRR
+      - Top1
+      - Recall@3
+      - AUPRC
+    models:
+      - all_baseline
+      - opentargets_l2g_2021
+      - opentargets_l2g_current
+      - all_sequence
+      - all_ensemble
+
+  D:
+    name: "Variant Effect"
+    description: "Variant → regulatory/nonregulatory (auxiliary, not V2G)"
+    gold_sources:
+      - TraitGym
+    unit: variant
+    metrics:
+      - AUPRC
+      - AUROC
+    models:
+      - TraitGym_published
+
+  E:
+    name: "Integrated V2G"
+    description: "Ensemble of variant effect + E2G + distance + sequence model"
+    gold_sources:
+      - all
+    unit: variant
+    metrics:
+      - MRR
+      - Top1
+      - Recall@3
+      - AUPRC
+    models:
+      - integrated_rank
+      - integrated_logistic
+      - integrated_xgboost
+
+# Benchmark subsets for fair comparison
+subsets:
+  COMMON_ALL_MODELS:
+    description: "Only samples where all Main models are applicable"
+    condition: "all_main_models_applicable"
+
+  FULL_AVAILABLE:
+    description: "Each model tested on all its applicable samples"
+    condition: "per_model_applicable"
+
+  SEQ_CORE:
+    description: "≤5000 variant-context pairs for sequence model fair comparison"
+    condition: "seq_core_sampled"
+    max_variant_contexts: 5000

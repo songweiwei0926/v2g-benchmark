@@ -1,0 +1,46 @@
+# Site-specific configuration — environment paths and credential references
+# Credentials are read from .env, never hardcoded in code.
+
+paths:
+  project_root: "/workspace/v2g-benchmark"
+  data_raw: "/workspace/v2g-benchmark/data/raw"
+  data_locked: "/workspace/v2g-benchmark/data/locked"
+  data_interim: "/workspace/v2g-benchmark/data/interim"
+  data_processed: "/workspace/v2g-benchmark/data/processed"
+  data_reference: "/workspace/v2g-benchmark/data/reference"
+  predictions: "/workspace/v2g-benchmark/predictions"
+  results: "/workspace/v2g-benchmark/results"
+  logs: "/workspace/v2g-benchmark/logs"
+  shared_workspace: "/mnt/shared-workspace/shared"
+
+# Credential environment variable names (values in .env)
+credentials:
+  alphagenome_api_key: "ALPHAGENOME_API_KEY"
+  synapse_auth_token: "SYNAPSE_AUTH_TOKEN"
+  github_token: "GITHUB_TOKEN"
+
+# Execution mode
+execution:
+  mode: local  # local | slurm
+  cores: 8
+  use_conda: true
+
+# GPU configuration for HPC tool submission
+gpu:
+  hpc_tool: "regvelo"
+  accelerator: "nvidia_t4"
+  memory_gb: 16
+  initial_batch_size: 8
+  min_batch_size: 1
+
+# Reference genome
+reference:
+  genome_fasta: "data/reference/GRCh38.fa"
+  genome_fasta_index: "data/reference/GRCh38.fa.fai"
+  gencode_gtf: "data/reference/gencode.v47.genes.gtf"
+  gencode_version: 47
+
+# Disk requirements
+disk:
+  scratch_min_gb: 200
+  persistent_min_gb: 100

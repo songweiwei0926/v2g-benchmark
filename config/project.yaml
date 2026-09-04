@@ -1,0 +1,104 @@
+# V2G-Benchmark-OneShot v1.0 — Frozen project parameters
+# This file must NOT be modified after the formal run begins.
+# Any change triggers config hash mismatch in final QC.
+
+project:
+  name: V2G-Benchmark-OneShot
+  version: "1.0"
+  genome_build: GRCh38
+  gencode: v47
+  seed: 20260904
+
+benchmark:
+  primary_window: 1000000
+  sensitivity_windows:
+    - 250000
+    - 500000
+    - 1000000
+
+eqtl:
+  primary_pip: 0.90
+  sensitivity_pip:
+    - 0.50
+    - 0.70
+    - 0.90
+    - 0.95
+  negative_pip: 0.01
+
+sequence_core:
+  max_variant_contexts: 5000
+
+bootstrap:
+  replicates: 2000
+
+context:
+  primary_min_confidence: 0.8
+
+execution:
+  retries: 3
+  fail_on_unresolved: true
+
+# Distance stratification bins (bp)
+distance_bins:
+  - [0, 10000]
+  - [10000, 50000]
+  - [50000, 100000]
+  - [100000, 250000]
+  - [250000, 500000]
+  - [500000, 1000000]
+
+# PIP stratification bins
+pip_bins:
+  - [0.50, 0.70]
+  - [0.70, 0.90]
+  - [0.90, 0.95]
+  - [0.95, 1.01]
+
+# Nearest-gene rank strata
+nearest_strata:
+  - 1
+  - 2
+  - 3
+  - "4+"
+
+# Context match strata
+context_strata:
+  - exact
+  - closely_matched
+  - coarse_matched
+  - unmatched
+
+# Evidence type strata
+evidence_strata:
+  - CRISPR
+  - eQTL
+  - GWAS
+  - curated_L2G
+
+# Chromosome folds for integrated model CV
+chromosome_folds:
+  Fold1: ["chr1", "chr2", "chr3", "chr4"]
+  Fold2: ["chr5", "chr6", "chr7", "chr8"]
+  Fold3: ["chr9", "chr10", "chr11", "chr12"]
+  Fold4: ["chr13", "chr14", "chr15", "chr16"]
+  Fold5: ["chr17", "chr18", "chr19", "chr20", "chr21", "chr22"]
+
+# Integrated model features
+integrated_features:
+  - log_distance
+  - abc
+  - encode_re2g
+  - sce2g
+  - pgboost
+  - borzoi_abs
+  - alphagenome_abs
+  - enformer_abs
+
+# Reproduction tolerance
+reproduction_tolerance: 0.02
+
+# Tie-breaking rules for ranking
+tie_break:
+  - score_descending
+  - distance_ascending
+  - gene_id_alphabetical
