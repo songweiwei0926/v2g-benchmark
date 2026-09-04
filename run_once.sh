@@ -77,12 +77,10 @@ echo ""
 echo "=== Phase 3: Snakemake Pipeline ==="
 snakemake \
     --cores "${V2G_CORES:-8}" \
-    --use-conda \
     --rerun-incomplete \
     --keep-going \
     --printshellcmds \
     --show-failed-logs \
-    --conda-frontend mamba \
     all
 
 # Phase 4: Final QC

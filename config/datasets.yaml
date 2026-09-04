@@ -8,7 +8,7 @@ datasets:
     track: A
     type: eqtl_fine_mapping
     source: GTEx Portal
-    url: "https://storage.googleapis.com/adult-gtex/bulk-qtl/v8/single-tissue-cis-qtl/GTEx_Analysis_v11_eQTL_SuSiE.tar"
+    url: "https://storage.googleapis.com/adult-gtex/bulk-qtl/v11/susie-qtl/GTEx_Analysis_v11_eQTL_SuSiE.tar"
     size_gb: 0.174
     gencode: v47
     format: tar

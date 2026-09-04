@@ -30,8 +30,8 @@ rule download_eqtl_catalogue:
     input:
         "data/locked/provenance.lock.yaml"
     output:
-        "data/raw/eqtl_catalogue_stable/",
-        "data/raw/eqtl_catalogue_r8_beta/"
+        directory("data/raw/eqtl_catalogue_stable/"),
+        directory("data/raw/eqtl_catalogue_r8_beta/")
     shell:
         """
         python scripts/download/download_eqtl_catalogue.py \
@@ -43,7 +43,7 @@ rule download_crispr:
     input:
         "data/locked/provenance.lock.yaml"
     output:
-        "data/raw/crispr_comparison/"
+        directory("data/raw/crispr_comparison/")
     shell:
         """
         python scripts/download/download_crispr.py \
@@ -55,7 +55,7 @@ rule download_gwas:
     input:
         "data/locked/provenance.lock.yaml"
     output:
-        "data/raw/gwas_e2g_benchmarking/"
+        directory("data/raw/gwas_e2g_benchmarking/")
     shell:
         """
         python scripts/download/download_gwas.py \
@@ -67,7 +67,7 @@ rule download_opentargets:
     input:
         "data/locked/provenance.lock.yaml"
     output:
-        "data/raw/opentargets_gold_standards/"
+        directory("data/raw/opentargets_gold_standards/")
     shell:
         """
         python scripts/download/download_opentargets.py \
@@ -79,7 +79,7 @@ rule download_zenodo:
     input:
         "data/locked/provenance.lock.yaml"
     output:
-        "data/raw/pgboost_zenodo/"
+        directory("data/raw/pgboost_zenodo/")
     shell:
         """
         python scripts/download/download_zenodo.py \
@@ -91,7 +91,7 @@ rule download_synapse:
     input:
         "data/locked/provenance.lock.yaml"
     output:
-        "data/raw/encode_predictions_bundle/"
+        directory("data/raw/encode_predictions_bundle/")
     shell:
         """
         python scripts/download/download_synapse.py \
@@ -103,7 +103,7 @@ rule download_traitgym:
     input:
         "data/locked/provenance.lock.yaml"
     output:
-        "data/raw/traitgym/"
+        directory("data/raw/traitgym/")
     shell:
         """
         python scripts/download/download_traitgym.py \
