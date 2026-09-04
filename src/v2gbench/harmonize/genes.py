@@ -251,81 +251,102 @@ def build_gene_master_table(
     gtf_path: str | Path,
     output_path: str | Path,
 ) -> str:
-    """Build the canonical gene master table from a GENCODE GTF.
+    """Build the canonical gene master table from a GENCODE GTF in a single pass.
 
     Produces a parquet file with columns matching
     :data:`v2gbench.schemas.gene.gene_schema`:
     ``gene_id``, ``gene_symbol``, ``chrom``, ``start``, ``end``, ``strand``,
     ``tss``, ``gene_type``, ``canonical_transcript``, ``exon_intervals``
     (a JSON-encoded list of ``[start, end]`` pairs).
-
-    Parameters
-    ----------
-    gtf_path
-        Path to a GENCODE GTF (optionally gzip-compressed).
-    output_path
-        Destination parquet path (e.g.
-        ``data/reference/gene_master.parquet``). Parent directories are
-        created.
-
-    Returns
-    -------
-    str
-        The path to the written parquet file.
     """
     gtf_path = Path(gtf_path)
     output_path = Path(output_path)
 
-    genes_df = parse_gencode_gtf(gtf_path)
-    if genes_df.is_empty():
+    # Single-pass parse: extract gene records, exon intervals, and canonical
+    # transcript info all in one scan of the GTF.
+    gene_records: dict[str, dict] = {}
+    exon_map: dict[str, list[list[int]]] = {}
+    tx_lengths: dict[str, dict[str, int]] = {}
+    mane_select_map: dict[str, str] = {}
+    mane_plus_map: dict[str, str] = {}
+    ensembl_canon_map: dict[str, str] = {}
+
+    with _open_gtf(gtf_path) as fh:
+        for line in fh:
+            if not line or line.startswith("#"):
+                continue
+            fields = line.rstrip("\n").split("\t")
+            if len(fields) < 9:
+                continue
+            chrom, source, feature, start, end, score, strand, frame, attr = fields[:9]
+            attrs = _parse_attributes(attr)
+            gid = deversion_gene_id(attrs.get("gene_id", ""))
+            if not gid:
+                continue
+
+            if feature == "gene":
+                start_i, end_i = int(start), int(end)
+                gene_records[gid] = {
+                    "gene_id": gid,
+                    "gene_symbol": attrs.get("gene_name", attrs.get("Name")),
+                    "chrom": chrom,
+                    "start": start_i,
+                    "end": end_i,
+                    "strand": strand,
+                    "gene_type": attrs.get("gene_type", attrs.get("gene_biotype")),
+                    "tss": compute_tss(start_i, end_i, strand),
+                }
+            elif feature == "exon":
+                exon_map.setdefault(gid, []).append([int(start), int(end)])
+                tx_id = attrs.get("transcript_id")
+                if tx_id:
+                    tx_id = re.sub(r"\.\d+$", "", tx_id)
+                    tx_lens = tx_lengths.setdefault(gid, {})
+                    tx_lens[tx_id] = tx_lens.get(tx_id, 0) + (int(end) - int(start) + 1)
+                    if attrs.get("mane_select") and gid not in mane_select_map:
+                        mane_select_map[gid] = tx_id
+                    if attrs.get("mane_plus_clinical") and gid not in mane_plus_map:
+                        mane_plus_map[gid] = tx_id
+                    if attrs.get("ensembl_canonical") and gid not in ensembl_canon_map:
+                        ensembl_canon_map[gid] = tx_id
+
+    if not gene_records:
         logger.warning("No genes parsed; writing empty gene master table to %s", output_path)
         empty = pl.DataFrame(
             schema={
-                "gene_id": pl.Utf8,
-                "gene_symbol": pl.Utf8,
-                "chrom": pl.Utf8,
-                "start": pl.Int64,
-                "end": pl.Int64,
-                "strand": pl.Utf8,
-                "tss": pl.Int64,
-                "gene_type": pl.Utf8,
-                "canonical_transcript": pl.Utf8,
-                "exon_intervals": pl.Utf8,
+                "gene_id": pl.Utf8, "gene_symbol": pl.Utf8, "chrom": pl.Utf8,
+                "start": pl.Int64, "end": pl.Int64, "strand": pl.Utf8,
+                "tss": pl.Int64, "gene_type": pl.Utf8,
+                "canonical_transcript": pl.Utf8, "exon_intervals": pl.Utf8,
             }
         )
         write_parquet(empty, output_path)
         return str(output_path)
 
-    gene_ids = genes_df["gene_id"].to_list()
     canonical_txs: list[Optional[str]] = []
     exon_jsons: list[Optional[str]] = []
-    logger.info("Building exon intervals + canonical transcripts for %d genes", len(gene_ids))
-    for gid in gene_ids:
-        tx = _pick_canonical_transcript(gtf_path, gid)
+
+    for gid in gene_records:
+        tx = (mane_select_map.get(gid) or mane_plus_map.get(gid)
+              or ensembl_canon_map.get(gid))
+        if tx is None and gid in tx_lengths:
+            tx = max(tx_lengths[gid], key=tx_lengths[gid].get)
         canonical_txs.append(tx)
-        intervals = extract_exon_intervals(gtf_path, gid)
+
+        intervals = exon_map.get(gid, [])
+        intervals.sort(key=lambda iv: (iv[0], iv[1]))
         exon_jsons.append(json.dumps(intervals) if intervals else None)
 
+    genes_df = pl.DataFrame(list(gene_records.values()))
     genes_df = genes_df.with_columns(
         pl.Series(name="canonical_transcript", values=canonical_txs, dtype=pl.Utf8),
         pl.Series(name="exon_intervals", values=exon_jsons, dtype=pl.Utf8),
     )
 
-    # Order columns to match the schema.
-    ordered = genes_df.select(
-        [
-            "gene_id",
-            "gene_symbol",
-            "chrom",
-            "start",
-            "end",
-            "strand",
-            "tss",
-            "gene_type",
-            "canonical_transcript",
-            "exon_intervals",
-        ]
-    )
+    ordered = genes_df.select([
+        "gene_id", "gene_symbol", "chrom", "start", "end",
+        "strand", "tss", "gene_type", "canonical_transcript", "exon_intervals",
+    ])
 
     write_parquet(ordered, output_path)
     logger.info("Wrote gene master table (%d genes) to %s", ordered.height, output_path)

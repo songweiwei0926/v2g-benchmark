@@ -169,7 +169,7 @@ def _extract_eqtl_catalogue(eqtl_dir: Path) -> pl.DataFrame:
     for tf in tsv_files:
         try:
             kwargs = {}
-            df = read_tsv(tf, n_rows=5, **kwargs)
+            df = read_tsv(tf, n_rows=5, infer_schema_length=10000, **kwargs)
             cols = set(df.columns)
             # Determine column names.
             chrom_col = next((c for c in ["chr", "chrom", "chromosome"] if c in cols), None)
@@ -220,7 +220,7 @@ def _extract_crispr(crispr_dir: Path) -> pl.DataFrame:
     print(f"  CRISPR: reading {key_file.name} ...")
     try:
         kwargs = {}
-        df = read_tsv(key_file, **kwargs)
+        df = read_tsv(key_file, infer_schema_length=10000, **kwargs)
     except Exception as exc:
         print(f"  CRISPR: failed to read {key_file}: {exc}", file=sys.stderr)
         return pl.DataFrame()
@@ -274,7 +274,7 @@ def _extract_gwas(gwas_dir: Path) -> pl.DataFrame:
     for tf in tsv_files:
         try:
             kwargs = {}
-            df = read_tsv(tf, n_rows=5, **kwargs)
+            df = read_tsv(tf, n_rows=5, infer_schema_length=10000, **kwargs)
             cols = set(df.columns)
             chrom_col = next((c for c in ["chr", "chrom", "chromosome", "Chr", "#Chr"] if c in cols), None)
             pos_col = next((c for c in ["pos", "position", "Pos", "bp", "BP", "start"] if c in cols), None)
@@ -327,12 +327,16 @@ def _extract_opentargets(ot_dir: Path) -> pl.DataFrame:
             sep = "\t"
             if tf.name.endswith(".csv") or tf.name.endswith(".csv.gz"):
                 sep = ","
-            df = pl.read_csv(tf, separator=sep, n_rows=5, **kwargs)
+            df = pl.read_csv(tf, separator=sep, n_rows=5, infer_schema_length=10000, **kwargs)
             cols = set(df.columns)
-            chrom_col = next((c for c in ["chr", "chrom", "chromosome", "Chr"] if c in cols), None)
-            pos_col = next((c for c in ["pos", "position", "Pos", "bp", "BP"] if c in cols), None)
-            ref_col = next((c for c in ["ref", "Ref", "reference"] if c in cols), None)
-            alt_col = next((c for c in ["alt", "Alt", "alternate"] if c in cols), None)
+            chrom_col = next((c for c in ["chr", "chrom", "chromosome", "Chr",
+                                          "sentinel_variant.locus_GRCh38.chromosome"] if c in cols), None)
+            pos_col = next((c for c in ["pos", "position", "Pos", "bp", "BP",
+                                        "sentinel_variant.locus_GRCh38.position"] if c in cols), None)
+            ref_col = next((c for c in ["ref", "Ref", "reference",
+                                        "sentinel_variant.alleles.reference"] if c in cols), None)
+            alt_col = next((c for c in ["alt", "Alt", "alternate",
+                                        "sentinel_variant.alleles.alternative"] if c in cols), None)
             if not all([chrom_col, pos_col, ref_col, alt_col]):
                 continue
             df_full = pl.read_csv(tf, separator=sep, columns=[chrom_col, pos_col, ref_col, alt_col], **kwargs)
@@ -376,7 +380,7 @@ def _extract_pgboost(pgboost_dir: Path) -> pl.DataFrame:
     for tf in data_files:
         try:
             kwargs = {}
-            df = read_tsv(tf, n_rows=5, **kwargs)
+            df = read_tsv(tf, n_rows=5, infer_schema_length=10000, **kwargs)
             cols = set(df.columns)
             chrom_col = next((c for c in ["chr", "chrom", "chromosome", "Chr"] if c in cols), None)
             pos_col = next((c for c in ["pos", "position", "Pos", "bp"] if c in cols), None)
