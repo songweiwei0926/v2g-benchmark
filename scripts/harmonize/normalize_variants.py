@@ -91,8 +91,7 @@ def _extract_gtex(gtex_path: Path) -> pl.DataFrame:
         return pl.DataFrame()
 
     print(f"  GTEx: extracting variants from tar ...")
-    variants: list[dict] = []
-    seen: set[str] = set()
+    chunks: list[pl.DataFrame] = []
 
     with tarfile.open(gtex_path, "r") as tar:
         for member in tar.getmembers():
@@ -112,12 +111,15 @@ def _extract_gtex(gtex_path: Path) -> pl.DataFrame:
                     df = pl.read_parquet(io.BytesIO(raw))
                     if "variant_id" not in df.columns:
                         continue
-                    for vid in df["variant_id"].to_list():
-                        if vid not in seen:
-                            parsed = _parse_gtex_variant_id(vid)
-                            if parsed:
-                                seen.add(vid)
-                                variants.append(parsed)
+                    # Vectorized parsing of variant_id: chr1_285155_A_C_b38
+                    vids = df["variant_id"].unique()
+                    parsed = vids.str.extract(r"^(chr\w+)_(\d+)_([ACGTN]+)_([ACGTN]+)(?:_b\d+)?$")
+                    if parsed.height > 0:
+                        parsed = parsed.rename({"1": "chrom", "2": "pos", "3": "ref", "4": "alt"})
+                        parsed = parsed.with_columns(
+                            pl.col("pos").cast(pl.Int64),
+                        ).filter(pl.col("chrom").is_not_null())
+                        chunks.append(parsed)
                 else:
                     if fname.endswith(".gz"):
                         raw = gzip.decompress(raw)
@@ -129,25 +131,29 @@ def _extract_gtex(gtex_path: Path) -> pl.DataFrame:
                     if "variant_id" not in header:
                         continue
                     vid_idx = header.index("variant_id")
+                    vids = set()
                     for line in lines[1:]:
                         fields = line.split("\t")
                         if len(fields) <= vid_idx:
                             continue
-                        vid = fields[vid_idx]
-                        if vid in seen:
-                            continue
-                        parsed = _parse_gtex_variant_id(vid)
-                        if parsed:
-                            seen.add(vid)
-                            variants.append(parsed)
+                        vids.add(fields[vid_idx])
+                    if vids:
+                        df_vids = pl.DataFrame({"vid": list(vids)})
+                        parsed = df_vids["vid"].str.extract(r"^(chr\w+)_(\d+)_([ACGTN]+)_([ACGTN]+)(?:_b\d+)?$")
+                        if parsed.height > 0:
+                            parsed = parsed.rename({"1": "chrom", "2": "pos", "3": "ref", "4": "alt"})
+                            parsed = parsed.with_columns(
+                                pl.col("pos").cast(pl.Int64),
+                            ).filter(pl.col("chrom").is_not_null())
+                            chunks.append(parsed)
             except Exception as exc:
                 print(f"    Warning: failed to read {fname}: {exc}", file=sys.stderr)
 
-    if not variants:
+    if not chunks:
         print(f"  GTEx: no variants extracted", file=sys.stderr)
         return pl.DataFrame()
-    df = pl.DataFrame(variants).with_columns(pl.lit("GTEx").alias("source"))
-    print(f"  GTEx: {len(variants)} unique variants")
+    df = pl.concat(chunks).unique().with_columns(pl.lit("GTEx").alias("source"))
+    print(f"  GTEx: {df.height} unique variants")
     return df
 
 
@@ -158,8 +164,7 @@ def _extract_eqtl_catalogue(eqtl_dir: Path) -> pl.DataFrame:
         return pl.DataFrame()
 
     print(f"  eQTL Catalogue: scanning {eqtl_dir} ...")
-    variants: list[dict] = []
-    seen: set[str] = set()
+    chunks: list[pl.DataFrame] = []
 
     tsv_files = sorted(
         p for p in eqtl_dir.rglob("*")
@@ -171,33 +176,35 @@ def _extract_eqtl_catalogue(eqtl_dir: Path) -> pl.DataFrame:
             kwargs = {}
             df = read_tsv(tf, n_rows=5, infer_schema_length=10000, **kwargs)
             cols = set(df.columns)
-            # Determine column names.
             chrom_col = next((c for c in ["chr", "chrom", "chromosome"] if c in cols), None)
             pos_col = next((c for c in ["position", "pos", "bp"] if c in cols), None)
             ref_col = next((c for c in ["ref", "reference"] if c in cols), None)
             alt_col = next((c for c in ["alt", "alternate"] if c in cols), None)
             if not all([chrom_col, pos_col, ref_col, alt_col]):
+                # Try parsing from a variant column (format: chr1_108004887_G_T)
+                vid_col = next((c for c in ["variant", "variant_id", "SNP"] if c in cols), None)
+                if vid_col:
+                    df_full = read_tsv(tf, columns=[vid_col], infer_schema_length=10000, **kwargs)
+                    vids = df_full[vid_col].unique()
+                    parsed = vids.str.extract(r"^(chr\w+)_(\d+)_([ACGTN]+)_([ACGTN]+)$")
+                    if parsed.height > 0:
+                        parsed = parsed.rename({"1": "chrom", "2": "pos", "3": "ref", "4": "alt"})
+                        parsed = parsed.with_columns(pl.col("pos").cast(pl.Int64))
+                        parsed = parsed.filter(pl.col("chrom").is_not_null())
+                        if parsed.height > 0:
+                            chunks.append(parsed)
                 continue
-            df_full = read_tsv(tf, columns=[chrom_col, pos_col, ref_col, alt_col], **kwargs)
-            for row in df_full.iter_rows(named=True):
-                key = f"{row[chrom_col]}:{row[pos_col]}:{row[ref_col]}:{row[alt_col]}"
-                if key in seen:
-                    continue
-                seen.add(key)
-                variants.append({
-                    "chrom": row[chrom_col],
-                    "pos": row[pos_col],
-                    "ref": row[ref_col],
-                    "alt": row[alt_col],
-                })
+            df_full = read_tsv(tf, columns=[chrom_col, pos_col, ref_col, alt_col], infer_schema_length=10000, **kwargs)
+            df_full = df_full.rename({chrom_col: "chrom", pos_col: "pos", ref_col: "ref", alt_col: "alt"})
+            chunks.append(df_full)
         except Exception as exc:
             print(f"    Warning: failed to read {tf.name}: {exc}", file=sys.stderr)
 
-    if not variants:
+    if not chunks:
         print(f"  eQTL Catalogue: no variants extracted", file=sys.stderr)
         return pl.DataFrame()
-    df = pl.DataFrame(variants).with_columns(pl.lit("eQTL_Catalogue").alias("source"))
-    print(f"  eQTL Catalogue: {len(variants)} unique variants")
+    df = pl.concat(chunks).unique().with_columns(pl.lit("eQTL_Catalogue").alias("source"))
+    print(f"  eQTL Catalogue: {df.height} unique variants")
     return df
 
 
@@ -228,7 +235,7 @@ def _extract_crispr(crispr_dir: Path) -> pl.DataFrame:
     cols = set(df.columns)
     # CRISPR ensemble data may have variant columns under various names.
     chrom_col = next((c for c in ["chr", "chrom", "chromosome", "Chr"] if c in cols), None)
-    pos_col = next((c for c in ["pos", "position", "Pos", "variantPos"] if c in cols), None)
+    pos_col = next((c for c in ["pos", "position", "Pos", "variantPos", "chromStart"] if c in cols), None)
     ref_col = next((c for c in ["ref", "Ref", "reference"] if c in cols), None)
     alt_col = next((c for c in ["alt", "Alt", "alternate"] if c in cols), None)
 
@@ -262,8 +269,7 @@ def _extract_gwas(gwas_dir: Path) -> pl.DataFrame:
         return pl.DataFrame()
 
     print(f"  GWAS: scanning {gwas_dir} for variant TSVs ...")
-    variants: list[dict] = []
-    seen: set[str] = set()
+    chunks: list[pl.DataFrame] = []
 
     tsv_files = sorted(
         p for p in gwas_dir.rglob("*")
@@ -282,26 +288,17 @@ def _extract_gwas(gwas_dir: Path) -> pl.DataFrame:
             alt_col = next((c for c in ["alt", "Alt", "alternate", "A2", "allele2"] if c in cols), None)
             if not all([chrom_col, pos_col, ref_col, alt_col]):
                 continue
-            df_full = read_tsv(tf, columns=[chrom_col, pos_col, ref_col, alt_col], **kwargs)
-            for row in df_full.iter_rows(named=True):
-                key = f"{row[chrom_col]}:{row[pos_col]}:{row[ref_col]}:{row[alt_col]}"
-                if key in seen:
-                    continue
-                seen.add(key)
-                variants.append({
-                    "chrom": row[chrom_col],
-                    "pos": row[pos_col],
-                    "ref": row[ref_col],
-                    "alt": row[alt_col],
-                })
+            df_full = read_tsv(tf, columns=[chrom_col, pos_col, ref_col, alt_col], infer_schema_length=10000, **kwargs)
+            df_full = df_full.rename({chrom_col: "chrom", pos_col: "pos", ref_col: "ref", alt_col: "alt"})
+            chunks.append(df_full)
         except Exception:
             continue
 
-    if not variants:
+    if not chunks:
         print(f"  GWAS: no variants extracted", file=sys.stderr)
         return pl.DataFrame()
-    df = pl.DataFrame(variants).with_columns(pl.lit("GWAS").alias("source"))
-    print(f"  GWAS: {len(variants)} unique variants")
+    df = pl.concat(chunks).unique().with_columns(pl.lit("GWAS").alias("source"))
+    print(f"  GWAS: {df.height} unique variants")
     return df
 
 
@@ -312,8 +309,7 @@ def _extract_opentargets(ot_dir: Path) -> pl.DataFrame:
         return pl.DataFrame()
 
     print(f"  OpenTargets: scanning {ot_dir} ...")
-    variants: list[dict] = []
-    seen: set[str] = set()
+    chunks: list[pl.DataFrame] = []
 
     data_files = sorted(
         p for p in ot_dir.rglob("*")
@@ -339,26 +335,18 @@ def _extract_opentargets(ot_dir: Path) -> pl.DataFrame:
                                         "sentinel_variant.alleles.alternative"] if c in cols), None)
             if not all([chrom_col, pos_col, ref_col, alt_col]):
                 continue
-            df_full = pl.read_csv(tf, separator=sep, columns=[chrom_col, pos_col, ref_col, alt_col], **kwargs)
-            for row in df_full.iter_rows(named=True):
-                key = f"{row[chrom_col]}:{row[pos_col]}:{row[ref_col]}:{row[alt_col]}"
-                if key in seen:
-                    continue
-                seen.add(key)
-                variants.append({
-                    "chrom": row[chrom_col],
-                    "pos": row[pos_col],
-                    "ref": row[ref_col],
-                    "alt": row[alt_col],
-                })
+            df_full = pl.read_csv(tf, separator=sep, columns=[chrom_col, pos_col, ref_col, alt_col],
+                                  infer_schema_length=10000, **kwargs)
+            df_full = df_full.rename({chrom_col: "chrom", pos_col: "pos", ref_col: "ref", alt_col: "alt"})
+            chunks.append(df_full)
         except Exception:
             continue
 
-    if not variants:
+    if not chunks:
         print(f"  OpenTargets: no variants extracted", file=sys.stderr)
         return pl.DataFrame()
-    df = pl.DataFrame(variants).with_columns(pl.lit("OpenTargets").alias("source"))
-    print(f"  OpenTargets: {len(variants)} unique variants")
+    df = pl.concat(chunks).unique().with_columns(pl.lit("OpenTargets").alias("source"))
+    print(f"  OpenTargets: {df.height} unique variants")
     return df
 
 

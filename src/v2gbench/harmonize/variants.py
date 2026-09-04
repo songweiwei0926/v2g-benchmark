@@ -249,22 +249,47 @@ def check_ref_match(
     df = variants_df.clone()
     rows = df.select([chrom_col, pos_col, ref_col]).to_dicts()
     matches: list[bool] = []
-    for row in rows:
-        ref_allele = str(row[ref_col]).upper()
-        if not ref_allele:
-            matches.append(False)
-            continue
-        if len(ref_allele) == 1:
-            ref_base = _read_fasta_base(reference_fasta, str(row[chrom_col]), int(row[pos_col]))
-            matches.append(ref_base is not None and ref_base == ref_allele)
-        else:
-            ref_base = _read_fasta_window(
-                reference_fasta,
-                str(row[chrom_col]),
-                int(row[pos_col]),
-                len(ref_allele),
-            )
-            matches.append(ref_base is not None and ref_base == ref_allele)
+
+    try:
+        import pysam
+        fasta = pysam.FastaFile(str(reference_fasta))
+        chroms_available = set(fasta.references)
+        for row in rows:
+            ref_allele = str(row[ref_col]).upper()
+            if not ref_allele:
+                matches.append(False)
+                continue
+            chrom = str(row[chrom_col])
+            if not chrom.startswith("chr"):
+                chrom = f"chr{chrom}"
+            if chrom not in chroms_available:
+                matches.append(False)
+                continue
+            pos = int(row[pos_col])
+            end = pos + len(ref_allele) - 1
+            try:
+                ref_base = fasta.fetch(chrom, pos - 1, end).upper()
+                matches.append(ref_base == ref_allele)
+            except (ValueError, KeyError, IOError):
+                matches.append(False)
+        fasta.close()
+    except ImportError:
+        for row in rows:
+            ref_allele = str(row[ref_col]).upper()
+            if not ref_allele:
+                matches.append(False)
+                continue
+            if len(ref_allele) == 1:
+                ref_base = _read_fasta_base(reference_fasta, str(row[chrom_col]), int(row[pos_col]))
+                matches.append(ref_base is not None and ref_base == ref_allele)
+            else:
+                ref_base = _read_fasta_window(
+                    reference_fasta,
+                    str(row[chrom_col]),
+                    int(row[pos_col]),
+                    len(ref_allele),
+                )
+                matches.append(ref_base is not None and ref_base == ref_allele)
 
     return df.with_columns(pl.Series(name="ref_match", values=matches, dtype=pl.Boolean))
 
