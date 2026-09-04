@@ -113,13 +113,15 @@ def _extract_gtex(gtex_path: Path) -> pl.DataFrame:
                         continue
                     # Vectorized parsing of variant_id: chr1_285155_A_C_b38
                     vids = df["variant_id"].unique()
-                    parsed = vids.str.extract(r"^(chr\w+)_(\d+)_([ACGTN]+)_([ACGTN]+)(?:_b\d+)?$")
-                    if parsed.height > 0:
-                        parsed = parsed.rename({"1": "chrom", "2": "pos", "3": "ref", "4": "alt"})
-                        parsed = parsed.with_columns(
+                    parsed = vids.str.extract_groups(r"^(chr\w+)_(\d+)_([ACGTN]+)_([ACGTN]+)(?:_b\d+)?$")
+                    if parsed is not None and parsed.len() > 0:
+                        parsed_df = parsed.to_frame().unnest("variant_id")
+                        parsed_df = parsed_df.rename({"1": "chrom", "2": "pos", "3": "ref", "4": "alt"})
+                        parsed_df = parsed_df.with_columns(
                             pl.col("pos").cast(pl.Int64),
                         ).filter(pl.col("chrom").is_not_null())
-                        chunks.append(parsed)
+                        if parsed_df.height > 0:
+                            chunks.append(parsed_df)
                 else:
                     if fname.endswith(".gz"):
                         raw = gzip.decompress(raw)
@@ -139,13 +141,15 @@ def _extract_gtex(gtex_path: Path) -> pl.DataFrame:
                         vids.add(fields[vid_idx])
                     if vids:
                         df_vids = pl.DataFrame({"vid": list(vids)})
-                        parsed = df_vids["vid"].str.extract(r"^(chr\w+)_(\d+)_([ACGTN]+)_([ACGTN]+)(?:_b\d+)?$")
-                        if parsed.height > 0:
-                            parsed = parsed.rename({"1": "chrom", "2": "pos", "3": "ref", "4": "alt"})
-                            parsed = parsed.with_columns(
+                        parsed = df_vids["vid"].str.extract_groups(r"^(chr\w+)_(\d+)_([ACGTN]+)_([ACGTN]+)(?:_b\d+)?$")
+                        if parsed is not None and parsed.len() > 0:
+                            parsed_df = parsed.to_frame().unnest("vid")
+                            parsed_df = parsed_df.rename({"1": "chrom", "2": "pos", "3": "ref", "4": "alt"})
+                            parsed_df = parsed_df.with_columns(
                                 pl.col("pos").cast(pl.Int64),
                             ).filter(pl.col("chrom").is_not_null())
-                            chunks.append(parsed)
+                            if parsed_df.height > 0:
+                                chunks.append(parsed_df)
             except Exception as exc:
                 print(f"    Warning: failed to read {fname}: {exc}", file=sys.stderr)
 
@@ -186,13 +190,14 @@ def _extract_eqtl_catalogue(eqtl_dir: Path) -> pl.DataFrame:
                 if vid_col:
                     df_full = read_tsv(tf, columns=[vid_col], infer_schema_length=10000, **kwargs)
                     vids = df_full[vid_col].unique()
-                    parsed = vids.str.extract(r"^(chr\w+)_(\d+)_([ACGTN]+)_([ACGTN]+)$")
-                    if parsed.height > 0:
-                        parsed = parsed.rename({"1": "chrom", "2": "pos", "3": "ref", "4": "alt"})
-                        parsed = parsed.with_columns(pl.col("pos").cast(pl.Int64))
-                        parsed = parsed.filter(pl.col("chrom").is_not_null())
-                        if parsed.height > 0:
-                            chunks.append(parsed)
+                    parsed = vids.str.extract_groups(r"^(chr\w+)_(\d+)_([ACGTN]+)_([ACGTN]+)$")
+                    if parsed is not None and parsed.len() > 0:
+                        parsed_df = parsed.to_frame().unnest(vid_col)
+                        parsed_df = parsed_df.rename({"1": "chrom", "2": "pos", "3": "ref", "4": "alt"})
+                        parsed_df = parsed_df.with_columns(pl.col("pos").cast(pl.Int64))
+                        parsed_df = parsed_df.filter(pl.col("chrom").is_not_null())
+                        if parsed_df.height > 0:
+                            chunks.append(parsed_df)
                 continue
             df_full = read_tsv(tf, columns=[chrom_col, pos_col, ref_col, alt_col], infer_schema_length=10000, **kwargs)
             df_full = df_full.rename({chrom_col: "chrom", pos_col: "pos", ref_col: "ref", alt_col: "alt"})
@@ -447,6 +452,9 @@ def main() -> int:
     for name, fn, path in extractors:
         df = fn(path)
         if not df.is_empty():
+            # Ensure consistent column order
+            cols = [c for c in ["chrom", "pos", "ref", "alt", "source"] if c in df.columns]
+            df = df.select(cols)
             frames.append(df)
             source_counts[name] = df.height
 
