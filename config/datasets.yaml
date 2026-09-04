@@ -40,7 +40,7 @@ datasets:
     source: GitHub
     repo: "EngreitzLab/CRISPR_comparison"
     url: "https://github.com/EngreitzLab/CRISPR_comparison"
-    key_file: "resources/crispr_data/EPCrisprBenchmark_ensemble_data_GRCh38.tsv.gz"
+    key_file: "resources/crispr_data/EPCrisprBenchmark_combined_data.heldout_5_cell_types.GRCh38.tsv.gz"
     adapter: CRISPRAdapter
 
   ENCODE_HeldOut:

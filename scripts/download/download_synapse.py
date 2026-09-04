@@ -24,7 +24,7 @@ from v2gbench.utils.config import load_config
 
 # Known Synapse IDs for the ENCODE-rE2G prediction bundle.
 # These are used as fallbacks if the project search fails.
-_KNOWN_PROJECT_ID = "syn51338475"  # ENCODE-rE2G project (may change)
+_KNOWN_PROJECT_ID = "syn52234275"  # ENCODE-rE2G prediction bundle (~76GB)
 _KNOWN_FOLDER_IDS: list[str] = []  # populated if known
 
 
@@ -52,6 +52,16 @@ def _get_synapse_client() -> Optional[object]:
 
 def _find_project(syn, project_name: str) -> Optional[str]:
     """Search Synapse for a project by name, returning its synID."""
+    # Try the newer API first
+    try:
+        from synapseclient.api import get_children
+        results = list(get_children(parent="syn1", include_types=["project"]))
+        for child in results:
+            if project_name.lower() in child.get("name", "").lower():
+                return child["id"]
+    except Exception:
+        pass
+    # Fallback: deprecated getChildren
     try:
         results = syn.getChildren(parent="syn1", includeTypes=["project"])
         for child in results:
@@ -59,15 +69,6 @@ def _find_project(syn, project_name: str) -> Optional[str]:
                 return child["id"]
     except Exception:
         pass
-    # Fallback: use the entity query API.
-    try:
-        results = syn.entityQuery(
-            f"select id from project where name contains '{project_name}'"
-        )
-        if results and results.get("results"):
-            return results["results"][0]["id"]
-    except Exception as exc:
-        print(f"  Project search failed: {exc}", file=sys.stderr)
     return None
 
 
